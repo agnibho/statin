@@ -61,7 +61,7 @@ options are:
 
 OUTPUT_DIR  : The directory where the statin output files will be saved.
 PROCESS_PAT : The filename extensions recognized by statin for processing.
-TIEMFMT     : The default time format.
+TIMEFMT     : The default time format.
 SIZEFMT     : The default size format.
 ERRMSG      : The default error message.
 
