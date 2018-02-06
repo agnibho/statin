@@ -24,6 +24,7 @@ from glob import glob
 from os import path, popen
 from shutil import rmtree, copytree, ignore_patterns
 from datetime import datetime
+import argparse
 import re
 
 from conf import *
@@ -39,43 +40,75 @@ ifskip = False
 
 # Start script
 def main():
+    global args
+
+    #Parse arguments
+    parser = argparse.ArgumentParser(description="Generate static html files")
+    verbo = parser.add_mutually_exclusive_group()
+    verbo.add_argument("-q", "--quiet", help="Suppress text output to console", action="store_true")
+    verbo.add_argument("-v", "--verbose", help="Verbose text output to console", action="store_true")
+    parser.add_argument("-s", "--safe", help="Disable python eval of strings", action="store_true")
+    parser.add_argument("files", help="List of files to be processed", nargs="*")
+    args = parser.parse_args()
+
     # List all files to be processed
     filelist = []
-    for patt in PROCESS_PATT:
-        filelist.extend(glob(patt))
+    if(args.files):
+        filelist = args.files
+    else:
+        for patt in PROCESS_PATT:
+            filelist.extend(glob(patt))
 
-    # Purge output directory and rebuild
-    rmtree(OUTPUT_DIR, True)
-    copytree(".", OUTPUT_DIR, ignore=ignore_patterns(*PROCESS_PATT))
-    print("Contents copied to " + OUTPUT_DIR + "\n")
+    # Purge output directory and rebuild if specific filenames not supplied
+    if(not args.files):
+        rmtree(OUTPUT_DIR, True)
+        copytree(".", OUTPUT_DIR, ignore=ignore_patterns(*PROCESS_PATT))
+        if(not args.quiet):
+            print("Contents copied to " + OUTPUT_DIR + "\n")
+
+    # Send file list for processing
     process_file(filelist)
 
 # Process each file in list
 def process_file(filelist):
+    global args
     global openif, ifstatus, ifskip
 
     #Loop over the filelist
     for filename in filelist:
-        varlist["DOCUMENT_URI"] = filename
-        varlist["DOCUMENT_NAME"] = path.basename(filename)
-        varlist["LAST_MODIFIED"] = datetime.fromtimestamp(path.getmtime(filename)).strftime(conflist["timefmt"])
-        print("Processing " + filename)
-        outfile = OUTPUT_DIR + path.splitext(path.basename(filename))[0] + ".html"
-        with open(filename) as src, open(outfile, "w") as out:
-            for line in src:
-                line = re.split("(<!--#.+-->)", line)
-                for item in line:
-                    if(item.strip()):
-                        if(item.strip()[:5] == "<!--#"):
-                            item = process_directive(item.strip()[5:][:-3].strip(), path.dirname(path.realpath(filename)))
-                        if(not ifskip and (not openif or ifstatus)):
-                            out.write(str(item))
-        print("Output written to " + outfile + "\n")
+        try:
+            varlist["DOCUMENT_URI"] = filename
+            varlist["DOCUMENT_NAME"] = path.basename(filename)
+            varlist["LAST_MODIFIED"] = datetime.fromtimestamp(path.getmtime(filename)).strftime(conflist["timefmt"])
+            if(not args.quiet):
+                print("Processing " + filename)
+            outfile = OUTPUT_DIR + path.splitext(path.basename(filename))[0] + ".html"
+            with open(filename) as src, open(outfile, "w") as out:
+                for line in src:
+                    line = re.split("(<!--#.+-->)", line)
+                    for item in line:
+                        if(item.strip()):
+                            if(item.strip()[:5] == "<!--#"):
+                                item = process_directive(item.strip()[5:][:-3].strip(), path.dirname(path.realpath(filename)))
+                            if(not ifskip and (not openif or ifstatus)):
+                                out.write(str(item))
+            if(not args.quiet):
+                print("Output written to " + outfile)
+        except FileNotFoundError:
+            if(not args.quiet):
+                print("Error: file '"+filename+"' could not be found. Please check if the file exists.")
+        except IsADirectoryError:
+            if(not args.quiet):
+                print("Error: can't process directory '"+filename+"'. Please provide file names only.")
 
 # Process the directives
 def process_directive(line, filedir):
+    global args
     global varlist, conflist
     global openif, ifstatus, ifskip
+
+    if(args.verbose):
+        print("  Processing directive : "+line)
 
     # Tokenize directives
     line = re.split('''\s(?=(?:[^'"]|'[^']*'|"[^"]*")*$)''', line)
@@ -91,6 +124,8 @@ def process_directive(line, filedir):
         try:
             ifstatus = (evaluate_expression(params["expr"]) == True)
         except KeyError:
+            if(args.verbose):
+                print("  Error: no expression to process")
             return conflist["errmsg"]
         return("")
     elif(directive == "elif"):
@@ -102,6 +137,8 @@ def process_directive(line, filedir):
             try:
                 ifstatus = (evaluate_expression(params["expr"]) == True)
             except KeyError:
+                if(args.verbose):
+                    print("  Error: no expression to process")
                 return conflist["errmsg"]
         return("")
     elif(directive == "else"):
@@ -131,6 +168,8 @@ def process_directive(line, filedir):
                 return(f.read())
         except KeyError:
             pass
+        if(args.verbose):
+            print("  Error: no filename to include")
         return conflist["errmsg"]
     elif(directive == "exec"):
         try:
@@ -141,11 +180,15 @@ def process_directive(line, filedir):
             return(popen(params["cgi"]).read())
         except KeyError:
             pass
+        if(args.verbose):
+            print("  Error: no command to execute")
         return conflist["errmsg"]
     elif(directive == "echo"):
         try:
             return(varlist[params["var"]])
         except KeyError:
+            if(args.verbose):
+                print("  Error: no variable to display")
             return conflist["errmsg"]
     elif(directive == "config"):
         conflist.update(params)
@@ -161,6 +204,8 @@ def process_directive(line, filedir):
             return(datetime.fromtimestamp(path.getmtime(filedir + "/" + params["file"])).strftime(conflist["timefmt"]))
         except KeyError:
             pass
+        if(args.verbose):
+            print("  Error: missing filename")
         return conflist["errmsg"]
     elif(directive == "fsize"):
         idx = { "B":1, "KB":1024, "MB":1048576, "GB":1073741824, "TB":1099511627776, "b":1, "kb":1024, "mb":1048576, "gb":1073741824, "tb":1099511627776, "bytes":1, "kilobytes":1024, "megabytes":1048576, "gigabytes":1073741824, "terabytes":1099511627776 }
@@ -172,6 +217,8 @@ def process_directive(line, filedir):
             return("{0:.2f}".format(path.getsize(filedir + "/" + params["file"]) / idx[conflist["sizefmt"]]) + conflist["sizefmt"])
         except KeyError:
             pass
+        if(args.verbose):
+            print("  Error: missing filename")
         return conflist["errmsg"]
     elif(directive == "printenv"):
         return(varlist)
@@ -179,14 +226,23 @@ def process_directive(line, filedir):
         try:
             varlist[params["var"]] = evaluate_expression(params["value"])
         except KeyError:
+            if(args.verbose):
+                print("  Error: missing variable or value")
             return conflist["errmsg"]
     else:
+        if(args.verbose):
+            print("  Error: unrecognized directive")
         return conflist["errmsg"]
     return ""
 
 # Expression evaluation
 def evaluate_expression(expr):
+    global args
     expr = str(expr)
+    if(args.safe):
+        if(args.verbose):
+            print("  Can't evaluate expression in safe mode")
+        return conflist["errmsg"]
     try:
         m=re.findall("\$\{*[^\}\s=><!+\-*/^%]+\}*", expr)
         for v in m:
