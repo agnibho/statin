@@ -1,0 +1,200 @@
+#! /usr/bin/python3
+
+'''
+Copyright (c) 2018 Agnibho Mondal
+All rights reserved
+
+This file is part of Statin.
+
+Statin is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Statin is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Statin.  If not, see <http://www.gnu.org/licenses/>.
+'''
+
+from glob import glob
+from os import path, popen
+from shutil import rmtree, copytree, ignore_patterns
+from datetime import datetime
+import re
+
+from conf import *
+
+# Global variables
+conflist = {"timefmt": TIMEFMT, "sizefmt": SIZEFMT, "errmsg": ERRMSG}
+varlist = {}
+varlist["DATE_LOCAL"] = datetime.now().strftime(conflist["timefmt"])
+varlist["DATE_GMT"] = datetime.utcnow().strftime(conflist["timefmt"])
+openif = False
+ifstatus = False
+ifskip = False
+
+# Start script
+def main():
+    global openif, ifstatus, ifskip
+    # List all files to be processed
+    filelist = []
+    for patt in PROCESS_PATT:
+        filelist.extend(glob(patt))
+
+    # Purge output directory and rebuild
+    rmtree(OUTPUT_DIR, True)
+    copytree(".", OUTPUT_DIR, ignore=ignore_patterns(*PROCESS_PATT))
+    print("Contents copied to " + OUTPUT_DIR + "\n")
+
+    # Process each file in list
+    for filename in filelist:
+        varlist["DOCUMENT_URI"] = filename
+        varlist["DOCUMENT_NAME"] = path.basename(filename)
+        varlist["LAST_MODIFIED"] = datetime.fromtimestamp(path.getmtime(filename)).strftime(conflist["timefmt"])
+        print("Processing " + filename)
+        outfile = OUTPUT_DIR + path.splitext(path.basename(filename))[0] + ".html"
+        with open(filename) as src, open(outfile, "w") as out:
+            for line in src:
+                line = re.split("(<!--#.+-->)", line)
+                for item in line:
+                    if(item.strip()):
+                        if(item.strip()[:5] == "<!--#"):
+                            item = process_directive(item.strip()[5:][:-3].strip(), path.dirname(path.realpath(filename)))
+                        if(not ifskip and (not openif or ifstatus)):
+                            out.write(str(item))
+        print("Output written to " + outfile + "\n")
+
+# Process the directives
+def process_directive(line, filedir):
+    global varlist, conflist
+    global openif, ifstatus, ifskip
+
+    # Tokenize directives
+    line = re.split('''\s(?=(?:[^'"]|'[^']*'|"[^"]*")*$)''', line)
+    directive = line.pop(0);
+    params = {}
+    for pair in line:
+        pair = re.split('''=(?=(?:[^'"]|'[^']*'|"[^"]*")*$)''', pair)
+        params[pair[0]] = pair[1][1:-1]
+
+    # Parse conditionals
+    if(directive == "if"):
+        openif = True
+        try:
+            ifstatus = (evaluate_expression(params["expr"]) == True)
+        except KeyError:
+            return conflist["errmsg"]
+        return("")
+    elif(directive == "elif"):
+        if(ifskip):
+            return("")
+        if(ifstatus):
+            ifskip = True
+        else:
+            try:
+                ifstatus = (evaluate_expression(params["expr"]) == True)
+            except KeyError:
+                return conflist["errmsg"]
+        return("")
+    elif(directive == "else"):
+        if(ifskip):
+            return("")
+        ifskip = ifstatus
+        ifstatus = not ifstatus
+        return("")
+    elif(directive == "endif"):
+        openif = False
+        ifskip = False
+        return("")
+
+    # Skip if conditional false
+    if(ifskip or (openif and not ifstatus)):
+        return("")
+
+    # Parse directives
+    if(directive == "include"):
+        try:
+            with open(params["virtual"]) as f:
+                return(f.read())
+        except KeyError:
+            pass
+        try:
+            with open(filedir + "/" + params["file"]) as f:
+                return(f.read())
+        except KeyError:
+            pass
+        return conflist["errmsg"]
+    elif(directive == "exec"):
+        try:
+            return(popen(params["cmd"]).read())
+        except KeyError:
+            pass
+        try:
+            return(popen(params["cgi"]).read())
+        except KeyError:
+            pass
+        return conflist["errmsg"]
+    elif(directive == "echo"):
+        try:
+            return(varlist[params["var"]])
+        except KeyError:
+            return conflist["errmsg"]
+    elif(directive == "config"):
+        conflist.update(params)
+        varlist["DATE_LOCAL"] = datetime.now().strftime(conflist["timefmt"])
+        varlist["DATE_GMT"] = datetime.utcnow().strftime(conflist["timefmt"])
+        varlist["LAST_MODIFIED"] = datetime.fromtimestamp(path.getmtime(filename)).strftime(conflist["timefmt"])
+    elif(directive == "flastmod"):
+        try:
+            return(datetime.fromtimestamp(path.getmtime(params["virtual"])).strftime(conflist["timefmt"]))
+        except KeyError:
+            pass
+        try:
+            return(datetime.fromtimestamp(path.getmtime(filedir + "/" + params["file"])).strftime(conflist["timefmt"]))
+        except KeyError:
+            pass
+        return conflist["errmsg"]
+    elif(directive == "fsize"):
+        idx = { "B":1, "KB":1024, "MB":1048576, "GB":1073741824, "TB":1099511627776, "b":1, "kb":1024, "mb":1048576, "gb":1073741824, "tb":1099511627776, "bytes":1, "kilobytes":1024, "megabytes":1048576, "gigabytes":1073741824, "terabytes":1099511627776 }
+        try:
+            return("{0:.2f}".format(path.getsize(params["virtual"]) / idx[conflist["sizefmt"]]) + " " + conflist["sizefmt"])
+        except KeyError:
+            pass
+        try:
+            return("{0:.2f}".format(path.getsize(filedir + "/" + params["file"]) / idx[conflist["sizefmt"]]) + conflist["sizefmt"])
+        except KeyError:
+            pass
+        return conflist["errmsg"]
+    elif(directive == "printenv"):
+        return(varlist)
+    elif(directive == "set"):
+        try:
+            varlist[params["var"]] = evaluate_expression(params["value"])
+        except KeyError:
+            return conflist["errmsg"]
+    else:
+        return conflist["errmsg"]
+    return ""
+
+# Expression evaluation
+def evaluate_expression(expr):
+    expr = str(expr)
+    try:
+        m=re.findall("\$\{*[^\}\s=><!+\-*/^%]+\}*", expr)
+        for v in m:
+            expr = expr.replace(v, str(varlist[v.replace("$", "").replace("{", "").replace("}", "")]))
+    except Exception:
+        pass
+    expr = re.sub("([\w\s]+)", r"'\1'", expr)
+    expr = re.sub("'([\d]+)'", r"\1", expr)
+    try:
+        return(eval(expr))
+    except Exception:
+        return(re.sub("'([\w\s]+)'", r"\1", expr))
+
+if(__name__ == "__main__"):
+    main()
