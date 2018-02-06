@@ -39,7 +39,6 @@ ifskip = False
 
 # Start script
 def main():
-    global openif, ifstatus, ifskip
     # List all files to be processed
     filelist = []
     for patt in PROCESS_PATT:
@@ -49,8 +48,13 @@ def main():
     rmtree(OUTPUT_DIR, True)
     copytree(".", OUTPUT_DIR, ignore=ignore_patterns(*PROCESS_PATT))
     print("Contents copied to " + OUTPUT_DIR + "\n")
+    process_file(filelist)
 
-    # Process each file in list
+# Process each file in list
+def process_file(filelist):
+    global openif, ifstatus, ifskip
+
+    #Loop over the filelist
     for filename in filelist:
         varlist["DOCUMENT_URI"] = filename
         varlist["DOCUMENT_NAME"] = path.basename(filename)
