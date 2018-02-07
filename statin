@@ -43,6 +43,7 @@ ifskip = False
 def main():
     global args
     global OUTPUT_DIR, PROCESS_PATT, MAX_RECURSION
+    PROCESS_PATT = set(PROCESS_PATT)
 
     #Parse arguments
     parser = argparse.ArgumentParser(description="Generate static html files")
@@ -52,12 +53,22 @@ def main():
     parser.add_argument("-s", "--safe", help="Disable python eval of strings", action="store_true")
     parser.add_argument("-r", "--recursive", help="Process files recursively", action="store_true")
     parser.add_argument("-l", "--level", help="Maximum recursion level", type=int)
+    parser.add_argument("-p", "--pattern", help="Filename patterns to be processed", action="append")
+    parser.add_argument("-o", "--output", help="Specify the output directory")
     parser.add_argument("files", help="List of files to be processed", nargs="*")
     args = parser.parse_args()
 
     # Reassign variables from option
     if(args.level != None):
         MAX_RECURSION = args.level
+    if(args.pattern != None):
+        PROCESS_PATT = PROCESS_PATT.union(args.pattern)
+    if(args.output != None):
+        if(args.output[-1:] != "/"):
+            args.output = args.output + "/"
+        if(args.output[:2] != "./" and args.output[:1] != "/"):
+            args.output = "./" + args.output
+        OUTPUT_DIR = args.output
 
     # List all files to be processed
     filelist = []
