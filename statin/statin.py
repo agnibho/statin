@@ -184,7 +184,7 @@ def process_directive(line, filename):
         except KeyError:
             if(args.verbose):
                 print("  Error: no expression to process")
-            return conflist["errmsg"]
+            return(conflist["errmsg"])
         return("")
     elif(directive == "elif"):
         if(ifskip):
@@ -197,7 +197,7 @@ def process_directive(line, filename):
             except KeyError:
                 if(args.verbose):
                     print("  Error: no expression to process")
-                return conflist["errmsg"]
+                return(conflist["errmsg"])
         return("")
     elif(directive == "else"):
         if(ifskip):
@@ -234,7 +234,7 @@ def process_directive(line, filename):
                 print("Error: file '" + e.filename + "' could not be found. Please check if the file exists.")
         if(args.verbose):
             print("  Error: no file to include")
-        return conflist["errmsg"]
+        return(conflist["errmsg"])
     elif(directive == "exec"):
         try:
             return(popen(params["cmd"]).read())
@@ -246,14 +246,14 @@ def process_directive(line, filename):
             pass
         if(args.verbose):
             print("  Error: no command to execute")
-        return conflist["errmsg"]
+        return(conflist["errmsg"])
     elif(directive == "echo"):
         try:
             return(varlist[params["var"]])
         except KeyError:
             if(args.verbose):
                 print("  Error: no variable to display")
-            return conflist["errmsg"]
+            return(conflist["errmsg"])
     elif(directive == "config"):
         conflist.update(params)
         varlist["DATE_LOCAL"] = datetime.now().strftime(conflist["timefmt"])
@@ -267,7 +267,7 @@ def process_directive(line, filename):
         except FileNotFoundError as e:
             if(not args.quiet):
                 print("Error: file '" + e.filename + "' could not be found. Please check if the file exists.")
-                return conflist["errmsg"]
+                return(conflist["errmsg"])
         try:
             return(datetime.fromtimestamp(path.getmtime(path.dirname(path.realpath(filename)) + "/" + params["file"])).strftime(conflist["timefmt"]))
         except KeyError:
@@ -275,10 +275,10 @@ def process_directive(line, filename):
         except FileNotFoundError as e:
             if(not args.quiet):
                 print("Error: file '" + e.filename + "' could not be found. Please check if the file exists.")
-                return conflist["errmsg"]
+                return(conflist["errmsg"])
         if(args.verbose):
             print("  Error: missing filename")
-        return conflist["errmsg"]
+        return(conflist["errmsg"])
     elif(directive == "fsize"):
         idx = { "B":1, "KB":1024, "MB":1048576, "GB":1073741824, "TB":1099511627776, "b":1, "kb":1024, "mb":1048576, "gb":1073741824, "tb":1099511627776, "bytes":1, "kilobytes":1024, "megabytes":1048576, "gigabytes":1073741824, "terabytes":1099511627776 }
         if(conflist["sizefmt"] == "abbrev"):
@@ -286,7 +286,7 @@ def process_directive(line, filename):
         if(not conflist["sizefmt"] in idx):
             if(args.verbose):
                 print("  Error: invalid size format")
-            return conflist["errmsg"]
+            return(conflist["errmsg"])
         try:
             return("{0:.2f}".format(path.getsize(params["virtual"]) / idx[conflist["sizefmt"]]) + " " + conflist["sizefmt"])
         except KeyError:
@@ -294,7 +294,7 @@ def process_directive(line, filename):
         except FileNotFoundError as e:
             if(not args.quiet):
                 print("Error: file '" + e.filename + "' could not be found. Please check if the file exists.")
-                return conflist["errmsg"]
+                return(conflist["errmsg"])
         try:
             return("{0:.2f}".format(path.getsize(path.dirname(path.realpath(filename)) + "/" + params["file"]) / idx[conflist["sizefmt"]]) + " " + conflist["sizefmt"])
         except KeyError:
@@ -302,10 +302,10 @@ def process_directive(line, filename):
         except FileNotFoundError as e:
             if(not args.quiet):
                 print("Error: file '" + e.filename + "' could not be found. Please check if the file exists.")
-                return conflist["errmsg"]
+                return(conflist["errmsg"])
         if(args.verbose):
             print("  Error: missing filename")
-        return conflist["errmsg"]
+        return(conflist["errmsg"])
     elif(directive == "printenv"):
         return(varlist)
     elif(directive == "set"):
@@ -314,12 +314,12 @@ def process_directive(line, filename):
         except KeyError:
             if(args.verbose):
                 print("  Error: missing variable or value")
-            return conflist["errmsg"]
+            return(conflist["errmsg"])
     else:
         if(args.verbose):
             print("  Error: unrecognized directive")
-        return conflist["errmsg"]
-    return ""
+        return(conflist["errmsg"])
+    return("")
 
 # Expression evaluation
 def evaluate_expression(expr):
@@ -328,7 +328,7 @@ def evaluate_expression(expr):
     if(args.safe):
         if(args.verbose):
             print("  Can't evaluate expression in safe mode")
-        return conflist["errmsg"]
+        return(conflist["errmsg"])
     try:
         m=re.findall("\$\{*[^\}\s=><!+\-*/^%]+\}*", expr)
         for v in m:
