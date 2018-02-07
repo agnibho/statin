@@ -66,40 +66,39 @@ def main():
         if(not args.quiet):
             print("Contents copied to " + OUTPUT_DIR + "\n")
 
-    # Send file list for processing
-    process_file(filelist)
+    # Send each file for processing
+    for filename in filelist:
+        outfile = OUTPUT_DIR + path.splitext(path.basename(filename))[0] + ".html"
+        process_file(filename, outfile)
 
-# Process each file in list
-def process_file(filelist):
+# Process the file
+def process_file(filename, outfile):
     global args
     global openif, ifstatus, ifskip
 
-    #Loop over the filelist
-    for filename in filelist:
-        try:
-            varlist["DOCUMENT_URI"] = filename
-            varlist["DOCUMENT_NAME"] = path.basename(filename)
-            varlist["LAST_MODIFIED"] = datetime.fromtimestamp(path.getmtime(filename)).strftime(conflist["timefmt"])
-            if(not args.quiet):
-                print("Processing " + filename)
-            outfile = OUTPUT_DIR + path.splitext(path.basename(filename))[0] + ".html"
-            with open(filename) as src, open(outfile, "w") as out:
-                for line in src:
-                    line = re.split("(<!--#.+-->)", line)
-                    for item in line:
-                        if(item.strip()):
-                            if(item.strip()[:5] == "<!--#"):
-                                item = process_directive(item.strip()[5:][:-3].strip(), path.dirname(path.realpath(filename)))
-                            if(not ifskip and (not openif or ifstatus)):
-                                out.write(str(item))
-            if(not args.quiet):
-                print("Output written to " + outfile)
-        except FileNotFoundError:
-            if(not args.quiet):
-                print("Error: file '"+filename+"' could not be found. Please check if the file exists.")
-        except IsADirectoryError:
-            if(not args.quiet):
-                print("Error: can't process directory '"+filename+"'. Please provide file names only.")
+    try:
+        varlist["DOCUMENT_URI"] = filename
+        varlist["DOCUMENT_NAME"] = path.basename(filename)
+        varlist["LAST_MODIFIED"] = datetime.fromtimestamp(path.getmtime(filename)).strftime(conflist["timefmt"])
+        if(not args.quiet):
+            print("Processing " + filename)
+        with open(filename) as src, open(outfile, "w") as out:
+            for line in src:
+                line = re.split("(<!--#.+-->)", line)
+                for item in line:
+                    if(item.strip()):
+                        if(item.strip()[:5] == "<!--#"):
+                            item = process_directive(item.strip()[5:][:-3].strip(), path.dirname(path.realpath(filename)))
+                        if(not ifskip and (not openif or ifstatus)):
+                            out.write(str(item))
+        if(not args.quiet):
+            print("Output written to " + outfile)
+    except FileNotFoundError:
+        if(not args.quiet):
+            print("Error: file '"+filename+"' could not be found. Please check if the file exists.")
+    except IsADirectoryError:
+        if(not args.quiet):
+            print("Error: can't process directory '"+filename+"'. Please provide file names only.")
 
 # Process the directives
 def process_directive(line, filedir):
