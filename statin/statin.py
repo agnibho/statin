@@ -19,7 +19,7 @@ along with Statin.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
 from glob import glob
-from os import path, popen, unlink
+from os import path, popen, unlink, makedirs
 from shutil import copyfile, rmtree, copytree, ignore_patterns
 from datetime import datetime
 import argparse
@@ -82,6 +82,8 @@ def main():
         copytree(".", OUTPUT_DIR, ignore=ignore_patterns(*PROCESS_PATT))
         if(not args.quiet):
             print("Contents copied to " + OUTPUT_DIR + "\n")
+    else:
+        makedirs(OUTPUT_DIR, exist_ok=True)
 
     # Send each file for processing
     for filename in filelist:
