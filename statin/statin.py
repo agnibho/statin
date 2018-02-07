@@ -145,9 +145,11 @@ def process_file(filename, outfile, original = None):
                     if(item.strip()):
                         if(item.strip()[:5] == "<!--#"):
                             no_directive = False
-                            item = process_directive(item.strip()[5:][:-3].strip(), path.dirname(path.realpath(filename)))
+                            item = process_directive(item.strip()[5:][:-3].strip(), filename)
                         if(not ifskip and (not openif or ifstatus)):
                             out.write(str(item))
+        if(openif and not args.quiet):
+            print("Error: Unexpected end of file reached. Expecting 'endif'.")
     except FileNotFoundError as e:
         if(not args.quiet):
             print("Error: file '" + e.filename + "' could not be found. Please check if the file exists.")
@@ -158,7 +160,7 @@ def process_file(filename, outfile, original = None):
     return(no_directive)
 
 # Process the directives
-def process_directive(line, filedir):
+def process_directive(line, filename):
     global args
     global varlist, conflist
     global openif, ifstatus, ifskip
@@ -223,7 +225,7 @@ def process_directive(line, filedir):
             if(not args.quiet):
                 print("Error: file '" + e.filename + "' could not be found. Please check if the file exists.")
         try:
-            with open(filedir + "/" + params["file"]) as f:
+            with open(path.dirname(path.realpath(filename)) + "/" + params["file"]) as f:
                 return(f.read())
         except KeyError:
             pass
@@ -262,23 +264,45 @@ def process_directive(line, filedir):
             return(datetime.fromtimestamp(path.getmtime(params["virtual"])).strftime(conflist["timefmt"]))
         except KeyError:
             pass
+        except FileNotFoundError as e:
+            if(not args.quiet):
+                print("Error: file '" + e.filename + "' could not be found. Please check if the file exists.")
+                return conflist["errmsg"]
         try:
-            return(datetime.fromtimestamp(path.getmtime(filedir + "/" + params["file"])).strftime(conflist["timefmt"]))
+            return(datetime.fromtimestamp(path.getmtime(path.dirname(path.realpath(filename)) + "/" + params["file"])).strftime(conflist["timefmt"]))
         except KeyError:
             pass
+        except FileNotFoundError as e:
+            if(not args.quiet):
+                print("Error: file '" + e.filename + "' could not be found. Please check if the file exists.")
+                return conflist["errmsg"]
         if(args.verbose):
             print("  Error: missing filename")
         return conflist["errmsg"]
     elif(directive == "fsize"):
         idx = { "B":1, "KB":1024, "MB":1048576, "GB":1073741824, "TB":1099511627776, "b":1, "kb":1024, "mb":1048576, "gb":1073741824, "tb":1099511627776, "bytes":1, "kilobytes":1024, "megabytes":1048576, "gigabytes":1073741824, "terabytes":1099511627776 }
+        if(conflist["sizefmt"] == "abbrev"):
+            conflist["sizefmt"] = "kb"
+        if(not conflist["sizefmt"] in idx):
+            if(args.verbose):
+                print("  Error: invalid size format")
+            return conflist["errmsg"]
         try:
             return("{0:.2f}".format(path.getsize(params["virtual"]) / idx[conflist["sizefmt"]]) + " " + conflist["sizefmt"])
         except KeyError:
             pass
+        except FileNotFoundError as e:
+            if(not args.quiet):
+                print("Error: file '" + e.filename + "' could not be found. Please check if the file exists.")
+                return conflist["errmsg"]
         try:
-            return("{0:.2f}".format(path.getsize(filedir + "/" + params["file"]) / idx[conflist["sizefmt"]]) + conflist["sizefmt"])
+            return("{0:.2f}".format(path.getsize(path.dirname(path.realpath(filename)) + "/" + params["file"]) / idx[conflist["sizefmt"]]) + " " + conflist["sizefmt"])
         except KeyError:
             pass
+        except FileNotFoundError as e:
+            if(not args.quiet):
+                print("Error: file '" + e.filename + "' could not be found. Please check if the file exists.")
+                return conflist["errmsg"]
         if(args.verbose):
             print("  Error: missing filename")
         return conflist["errmsg"]
