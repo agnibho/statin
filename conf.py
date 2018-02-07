@@ -22,6 +22,7 @@ along with Statin.  If not, see <http://www.gnu.org/licenses/>.
 
 OUTPUT_DIR = "./statin-output/"
 PROCESS_PATT = ["*.shtml", "*.shtm", "*.stm"]
+MAX_RECURSION = 10
 
 TIMEFMT = "%Y-%m-%d %H:%M:%S"
 SIZEFMT = "bytes"
