@@ -1,5 +1,3 @@
-#! /usr/bin/python3
-
 '''
 Copyright (c) 2018 Agnibho Mondal
 All rights reserved
@@ -28,7 +26,7 @@ import argparse
 import re
 import tempfile
 
-from conf import *
+from statin.conf import *
 
 # Global variables
 conflist = {"timefmt": TIMEFMT, "sizefmt": SIZEFMT, "errmsg": ERRMSG}

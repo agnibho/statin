@@ -11,8 +11,12 @@ deployment.
 Installation
 ============
 
-Clone the repository to your computer and add it to your path (optional). You
-need to have Python 3 installed in order to use the script.
+Download the package distribution and install it to your computer. You can
+install the package with pip by running 'pip install statin.tar.gz'. You may
+require superuser persmission to install the package. Alternatively you can
+clone the repository to your computer and exucute the script named 'run'.
+
+You need to have Python 3 installed in order to use the script.
 
 Usage
 =====
@@ -21,6 +25,24 @@ Create your website in html. The files containing SSI directives should have the
 extension ".shtml", ".shtm", or ".sht". After creating the website change
 directory to the document root of the site and run the script. By default the
 static site will be generated in a subdirectory named statin-output.
+
+A number of command line options are also available.
+
+positional arguments:
+  files                 List of files to be processed
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -q, --quiet           Suppress text output to console
+  -v, --verbose         Verbose text output to console
+  -s, --safe            Disable python eval of strings
+  -r, --recursive       Process files recursively
+  -l LEVEL, --level LEVEL
+                        Maximum recursion level
+  -p PATTERN, --pattern PATTERN
+                        Filename patterns to be processed
+  -o OUTPUT, --output OUTPUT
+                        Specify the output directory
 
 Supported Directives
 ====================
