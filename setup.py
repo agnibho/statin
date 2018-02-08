@@ -33,7 +33,7 @@ setup(name = "statin",
       long_description = "Statin is a static html files generator. It is compatible with SSI directives.",
       classifiers = [
           "Development Status :: 4 - Beta",
-          "Environment :: console",
+          "Environment :: Console",
           "Intended Audience :: Developers",
           "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
           "Natural Language :: English",
