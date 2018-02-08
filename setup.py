@@ -20,7 +20,7 @@ You should have received a copy of the GNU General Public License
 along with Statin.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-from distutils.core import setup
+from setuptools import setup
 
 setup(name = "statin",
       version = "1.0",
@@ -29,7 +29,7 @@ setup(name = "statin",
       author_email = "contact@agnibho.com",
       url = "https://code.agnibho.com/statin/",
       packages = ["statin"],
-      scripts = ["script/statin"],
+      entry_points = {"console_scripts" : ["statin = statin.statin:main"]},
       long_description = "Statin is a static html files generator. It is compatible with SSI directives.",
       classifiers = [
           "Development Status :: 4 - Beta",
