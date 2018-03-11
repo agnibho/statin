@@ -46,14 +46,14 @@ def main():
     #Parse arguments
     parser = argparse.ArgumentParser(description="Generate static html files")
     verbo = parser.add_mutually_exclusive_group()
-    verbo.add_argument("-q", "--quiet", help="Suppress text output to console", action="store_true")
-    verbo.add_argument("-v", "--verbose", help="Verbose text output to console", action="store_true")
-    parser.add_argument("-s", "--safe", help="Disable python eval of strings", action="store_true")
-    parser.add_argument("-r", "--recursive", help="Process files recursively", action="store_true")
-    parser.add_argument("-l", "--level", help="Maximum recursion level", type=int)
-    parser.add_argument("-p", "--pattern", help="Filename patterns to be processed", action="append")
-    parser.add_argument("-o", "--output", help="Specify the output directory")
-    parser.add_argument("files", help="List of files to be processed", nargs="*")
+    verbo.add_argument("-q", "--quiet", help="suppress text output to console", action="store_true")
+    verbo.add_argument("-v", "--verbose", help="verbose text output to console", action="store_true")
+    parser.add_argument("-s", "--safe", help="disable python eval and cmd exec", action="store_true")
+    parser.add_argument("-r", "--recursive", help="process files recursively", action="store_true")
+    parser.add_argument("-l", "--level", help="maximum recursion level", type=int)
+    parser.add_argument("-p", "--pattern", help="filename patterns to be processed", action="append")
+    parser.add_argument("-o", "--output", help="specify the output directory")
+    parser.add_argument("files", help="list of files to be processed", nargs="*")
     args = parser.parse_args()
 
     # Reassign variables from option
@@ -236,6 +236,10 @@ def process_directive(line, filename):
             print("  Error: no file to include")
         return(conflist["errmsg"])
     elif(directive == "exec"):
+        if(args.safe):
+            if(args.verbose):
+                print("  Can't execute command in safe mode")
+            return(conflist["errmsg"])
         try:
             return(popen(params["cmd"]).read())
         except KeyError:
