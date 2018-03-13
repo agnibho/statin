@@ -19,7 +19,7 @@ along with Statin.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
 from glob import glob
-from os import path, popen, unlink, makedirs
+from os import path, unlink, makedirs
 from subprocess import run, PIPE
 from shutil import copyfile, rmtree, copytree, ignore_patterns
 from datetime import datetime
@@ -105,7 +105,7 @@ def main():
             filename = tf.name
             try:
                 with open(tf.name) as f:
-                    p = run(args.before.split(), input = f.read(), stdout=PIPE, encoding="utf-8")
+                    p = run(args.before, shell=True, input = f.read(), stdout=PIPE, encoding="utf-8")
                 with open(tf.name, "w") as f:
                     if(p.returncode == 0):
                         f.write(p.stdout)
@@ -162,7 +162,7 @@ def main():
                 print("Running " + args.after)
             try:
                 with open(outfile) as f:
-                    p = run(args.after.split(), input = f.read(), stdout=PIPE, encoding="utf-8")
+                    p = run(args.after, shell=True, input = f.read(), stdout=PIPE, encoding="utf-8")
                 with open(outfile, "w") as f:
                     if(p.returncode == 0):
                         f.write(p.stdout)
@@ -290,11 +290,11 @@ def process_directive(line, filename):
                 print("  Can't execute command in safe mode")
             return(conflist["errmsg"])
         try:
-            return(run(params["cmd"].split(), stdout=PIPE, encoding="utf-8").stdout)
+            return(run(params["cmd"], shell=True, stdout=PIPE, encoding="utf-8").stdout)
         except KeyError:
             pass
         try:
-            return(run(params["cgi"].split(), stdout=PIPE, encoding="utf-8").stdout)
+            return(run(params["cgi"], shell=True, stdout=PIPE, encoding="utf-8").stdout)
         except KeyError:
             pass
         if(args.verbose):
