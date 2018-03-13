@@ -112,7 +112,7 @@ def main():
             except FileNotFoundError:
                 if(not args.quiet):
                     print(args.before + ": command not recognized")
-            else:
+            except:
                 if(args.verbose):
                     print(args.before + ": command failed")
 
@@ -169,7 +169,7 @@ def main():
             except FileNotFoundError:
                 if(not args.quiet):
                     print(args.after + ": command not recognized")
-            else:
+            except:
                 if(args.verbose):
                     print(args.after + ": command failed")
 
@@ -290,11 +290,11 @@ def process_directive(line, filename):
                 print("  Can't execute command in safe mode")
             return(conflist["errmsg"])
         try:
-            return(popen(params["cmd"]).read())
+            return(run(params["cmd"].split(), stdout=PIPE, encoding="utf-8").stdout)
         except KeyError:
             pass
         try:
-            return(popen(params["cgi"]).read())
+            return(run(params["cgi"].split(), stdout=PIPE, encoding="utf-8").stdout)
         except KeyError:
             pass
         if(args.verbose):
