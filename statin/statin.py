@@ -20,6 +20,7 @@ along with Statin.  If not, see <http://www.gnu.org/licenses/>.
 
 from glob import glob
 from os import path, popen, unlink, makedirs
+from subprocess import run, PIPE
 from shutil import copyfile, rmtree, copytree, ignore_patterns
 from datetime import datetime
 import argparse
@@ -51,6 +52,8 @@ def main():
     parser.add_argument("-s", "--safe", help="disable python eval and cmd exec", action="store_true")
     parser.add_argument("-r", "--recursive", help="process files recursively", action="store_true")
     parser.add_argument("-l", "--level", help="maximum recursion level", type=int)
+    parser.add_argument("-c", "--after", help="run command after processing file")
+    parser.add_argument("-C", "--before", help="run command before processing file")
     parser.add_argument("-p", "--pattern", help="filename patterns to be processed", action="append")
     parser.add_argument("-o", "--output", help="specify the output directory")
     parser.add_argument("files", help="list of files to be processed", nargs="*")
@@ -89,12 +92,35 @@ def main():
     for filename in filelist:
         if(not args.quiet):
             print("Processing '" + filename + "'")
+        outfile = OUTPUT_DIR + path.splitext(path.basename(filename))[0] + ".html"
         temp = []
+        fdir = path.dirname(path.realpath(filename))
+
+        # Run before-commands
+        if(args.before):
+            if(args.verbose):
+                print("Running " + args.before)
+            tf = tempfile.NamedTemporaryFile(dir=fdir, prefix=".", delete=False)
+            copyfile(filename, tf.name)
+            filename = tf.name
+            try:
+                with open(tf.name) as f:
+                    p = run(args.before.split(), input = f.read(), stdout=PIPE, encoding="utf-8")
+                with open(tf.name, "w") as f:
+                    if(p.returncode == 0):
+                        f.write(p.stdout)
+            except FileNotFoundError:
+                if(not args.quiet):
+                    print(args.before + ": command not recognized")
+            else:
+                if(args.verbose):
+                    print(args.before + ": command failed")
+
+        # Handle recursion
         if(args.recursive):
             if(not args.quiet):
                 print("Creating temporary files")
             rlvl = 0
-            fdir = path.dirname(path.realpath(filename))
             temp.append(tempfile.NamedTemporaryFile(dir=fdir, prefix=".", delete=False))
             temp.append(tempfile.NamedTemporaryFile(dir=fdir, prefix=".", delete=False))
             copyfile(filename, temp[0].name)
@@ -110,7 +136,6 @@ def main():
                 rlvl += 1
             if(not args.quiet and rlvl >= MAX_RECURSION):
                 print("Maximum recursion level reached")
-            outfile = OUTPUT_DIR + path.splitext(path.basename(filename))[0] + ".html"
             copyfile(temp[0].name, outfile)
             if(not args.quiet):
                 print("Output saved to '" + outfile + "'")
@@ -118,11 +143,35 @@ def main():
                 print("Cleaning up temporary files")
             for t in temp:
                 unlink(t.name)
+        # Simple processing
         else:
-            outfile = OUTPUT_DIR + path.splitext(path.basename(filename))[0] + ".html"
             process_file(filename, outfile)
             if(not args.quiet):
                 print("Output saved to '" + outfile + "'")
+
+        # Clean-up
+        try:
+            if(tf):
+                unlink(tf.name)
+        except:
+            pass
+
+        # Run after-commands
+        if(args.after):
+            if(args.verbose):
+                print("Running " + args.after)
+            try:
+                with open(outfile) as f:
+                    p = run(args.after.split(), input = f.read(), stdout=PIPE, encoding="utf-8")
+                with open(outfile, "w") as f:
+                    if(p.returncode == 0):
+                        f.write(p.stdout)
+            except FileNotFoundError:
+                if(not args.quiet):
+                    print(args.after + ": command not recognized")
+            else:
+                if(args.verbose):
+                    print(args.after + ": command failed")
 
 # Process the file
 def process_file(filename, outfile, original = None):
