@@ -95,17 +95,18 @@ def main():
         outfile = OUTPUT_DIR + path.splitext(path.basename(filename))[0] + ".html"
         temp = []
         fdir = path.dirname(path.realpath(filename))
+        orig = filename
 
         # Run before-commands
         if(args.before):
             if(args.verbose):
                 print("Running " + args.before)
-            tf = tempfile.NamedTemporaryFile(dir=fdir, prefix=".", delete=False)
+            tf = tempfile.NamedTemporaryFile(delete = False)
             copyfile(filename, tf.name)
             filename = tf.name
             try:
                 with open(tf.name) as f:
-                    p = run(args.before, shell=True, input = f.read(), stdout=PIPE, encoding="utf-8")
+                    p = run(args.before, shell = True, input = f.read(), stdout = PIPE, encoding = "utf-8")
                 with open(tf.name, "w") as f:
                     if(p.returncode == 0):
                         f.write(p.stdout)
@@ -121,15 +122,15 @@ def main():
             if(not args.quiet):
                 print("Creating temporary files")
             rlvl = 0
-            temp.append(tempfile.NamedTemporaryFile(dir=fdir, prefix=".", delete=False))
-            temp.append(tempfile.NamedTemporaryFile(dir=fdir, prefix=".", delete=False))
+            temp.append(tempfile.NamedTemporaryFile(delete = False))
+            temp.append(tempfile.NamedTemporaryFile(delete = False))
             copyfile(filename, temp[0].name)
             if(args.verbose):
                 print("'" + filename + "' copied to '" + temp[0].name + "'")
             if(args.verbose):
                 print("Processing '" + temp[0].name + "' to '" + temp[1].name + "'")
-            while(rlvl < MAX_RECURSION and not process_file(temp[0].name, temp[1].name, filename)):
-                temp.append(tempfile.NamedTemporaryFile(dir=fdir, prefix=".", delete=False))
+            while(rlvl < MAX_RECURSION and not process_file(temp[0].name, temp[1].name, directory = fdir, original = orig)):
+                temp.append(tempfile.NamedTemporaryFile(delete = False))
                 unlink(temp.pop(0).name)
                 if(args.verbose):
                     print("Processing '" + temp[0].name + "' to '" + temp[1].name + "'")
@@ -145,7 +146,7 @@ def main():
                 unlink(t.name)
         # Simple processing
         else:
-            process_file(filename, outfile)
+            process_file(filename, outfile, directory = fdir, original = orig)
             if(not args.quiet):
                 print("Output saved to '" + outfile + "'")
 
@@ -162,7 +163,7 @@ def main():
                 print("Running " + args.after)
             try:
                 with open(outfile) as f:
-                    p = run(args.after, shell=True, input = f.read(), stdout=PIPE, encoding="utf-8")
+                    p = run(args.after, shell = True, input = f.read(), stdout = PIPE, encoding = "utf-8")
                 with open(outfile, "w") as f:
                     if(p.returncode == 0):
                         f.write(p.stdout)
@@ -174,14 +175,12 @@ def main():
                     print(args.after + ": command failed")
 
 # Process the file
-def process_file(filename, outfile, original = None):
+def process_file(filename, outfile, directory, original):
     global args
     global openif, ifstatus, ifskip
 
     # Assign variable values
     no_directive = True
-    if(original == None):
-        original = filename
 
     try:
         varlist["DOCUMENT_URI"] = original
@@ -194,7 +193,7 @@ def process_file(filename, outfile, original = None):
                     if(item.strip()):
                         if(item.strip()[:5] == "<!--#"):
                             no_directive = False
-                            item = process_directive(item.strip()[5:][:-3].strip(), filename)
+                            item = process_directive(item.strip()[5:][:-3].strip(), original = original, directory = directory)
                         if(not ifskip and (not openif or ifstatus)):
                             out.write(str(item))
         if(openif and not args.quiet):
@@ -209,7 +208,7 @@ def process_file(filename, outfile, original = None):
     return(no_directive)
 
 # Process the directives
-def process_directive(line, filename):
+def process_directive(line, original, directory):
     global args
     global varlist, conflist
     global openif, ifstatus, ifskip
@@ -265,6 +264,7 @@ def process_directive(line, filename):
 
     # Parse directives
     if(directive == "include"):
+        print(directory)
         try:
             with open(params["virtual"]) as f:
                 return(f.read())
@@ -274,7 +274,7 @@ def process_directive(line, filename):
             if(not args.quiet):
                 print("Error: file '" + e.filename + "' could not be found. Please check if the file exists.")
         try:
-            with open(path.dirname(path.realpath(filename)) + "/" + params["file"]) as f:
+            with open(directory + "/" + params["file"]) as f:
                 return(f.read())
         except KeyError:
             pass
@@ -290,11 +290,11 @@ def process_directive(line, filename):
                 print("  Can't execute command in safe mode")
             return(conflist["errmsg"])
         try:
-            return(run(params["cmd"], shell=True, stdout=PIPE, encoding="utf-8").stdout)
+            return(run(params["cmd"], shell = True, stdout = PIPE, encoding = "utf-8").stdout)
         except KeyError:
             pass
         try:
-            return(run(params["cgi"], shell=True, stdout=PIPE, encoding="utf-8").stdout)
+            return(run(params["cgi"], shell = True, stdout = PIPE, encoding = "utf-8").stdout)
         except KeyError:
             pass
         if(args.verbose):
@@ -311,7 +311,7 @@ def process_directive(line, filename):
         conflist.update(params)
         varlist["DATE_LOCAL"] = datetime.now().strftime(conflist["timefmt"])
         varlist["DATE_GMT"] = datetime.utcnow().strftime(conflist["timefmt"])
-        varlist["LAST_MODIFIED"] = datetime.fromtimestamp(path.getmtime(filename)).strftime(conflist["timefmt"])
+        varlist["LAST_MODIFIED"] = datetime.fromtimestamp(path.getmtime(original)).strftime(conflist["timefmt"])
     elif(directive == "flastmod"):
         try:
             return(datetime.fromtimestamp(path.getmtime(params["virtual"])).strftime(conflist["timefmt"]))
@@ -322,7 +322,7 @@ def process_directive(line, filename):
                 print("Error: file '" + e.filename + "' could not be found. Please check if the file exists.")
                 return(conflist["errmsg"])
         try:
-            return(datetime.fromtimestamp(path.getmtime(path.dirname(path.realpath(filename)) + "/" + params["file"])).strftime(conflist["timefmt"]))
+            return(datetime.fromtimestamp(path.getmtime(directory + "/" + params["file"])).strftime(conflist["timefmt"]))
         except KeyError:
             pass
         except FileNotFoundError as e:
@@ -349,7 +349,7 @@ def process_directive(line, filename):
                 print("Error: file '" + e.filename + "' could not be found. Please check if the file exists.")
                 return(conflist["errmsg"])
         try:
-            return("{0:.2f}".format(path.getsize(path.dirname(path.realpath(filename)) + "/" + params["file"]) / idx[conflist["sizefmt"]]) + " " + conflist["sizefmt"])
+            return("{0:.2f}".format(path.getsize(directory + "/" + params["file"]) / idx[conflist["sizefmt"]]) + " " + conflist["sizefmt"])
         except KeyError:
             pass
         except FileNotFoundError as e:
