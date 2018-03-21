@@ -102,6 +102,7 @@ def main():
             if(args.verbose):
                 print("Running " + args.before)
             tf = tempfile.NamedTemporaryFile(delete = False)
+            tf.close()
             copyfile(filename, tf.name)
             filename = tf.name
             try:
@@ -123,7 +124,9 @@ def main():
                 print("Creating temporary files")
             rlvl = 0
             temp.append(tempfile.NamedTemporaryFile(delete = False))
+            temp[-1].close()
             temp.append(tempfile.NamedTemporaryFile(delete = False))
+            temp[-1].close()
             copyfile(filename, temp[0].name)
             if(args.verbose):
                 print("'" + filename + "' copied to '" + temp[0].name + "'")
@@ -131,6 +134,7 @@ def main():
                 print("Processing '" + temp[0].name + "' to '" + temp[1].name + "'")
             while(rlvl < MAX_RECURSION and not process_file(temp[0].name, temp[1].name, directory = fdir, original = orig)):
                 temp.append(tempfile.NamedTemporaryFile(delete = False))
+                temp[-1].close()
                 unlink(temp.pop(0).name)
                 if(args.verbose):
                     print("Processing '" + temp[0].name + "' to '" + temp[1].name + "'")
@@ -264,7 +268,6 @@ def process_directive(line, original, directory):
 
     # Parse directives
     if(directive == "include"):
-        print(directory)
         try:
             with open(params["virtual"]) as f:
                 return(f.read())
