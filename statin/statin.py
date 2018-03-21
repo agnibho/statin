@@ -18,11 +18,11 @@ You should have received a copy of the GNU General Public License
 along with Statin.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
+from datetime import datetime
 from glob import glob
 from os import path, unlink, makedirs
-from subprocess import run, PIPE
 from shutil import copyfile, rmtree, copytree, ignore_patterns
-from datetime import datetime
+from subprocess import run, PIPE
 import argparse
 import re
 import tempfile
