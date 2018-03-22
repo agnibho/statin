@@ -23,7 +23,7 @@ along with Statin.  If not, see <http://www.gnu.org/licenses/>.
 from setuptools import setup
 
 setup(name = "statin",
-      version = "1.0",
+      version = "1.1",
       description = "Static html files generator",
       author = "Agnibho Mondal",
       author_email = "contact@agnibho.com",
@@ -39,6 +39,7 @@ setup(name = "statin",
           "Natural Language :: English",
           "Operating System :: POSIX",
           "Operating System :: Unix",
+          "Programming Language :: Python :: 3.5",
           "Programming Language :: Python :: 3 :: Only",
           "Topic :: Software Development :: Code Generators"
           ]
